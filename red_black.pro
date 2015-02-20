@@ -15,5 +15,9 @@ CONFIG   -= app_bundle
 TEMPLATE = app
 
 
-SOURCES += main.cpp
+SOURCES += main.cpp \
+    bs_tree.cpp
 CONFIG += c++11
+
+HEADERS += \
+    rb_tree.h
