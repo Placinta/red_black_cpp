@@ -224,64 +224,147 @@ public:
         remove_real(root, val);
     }
 
-    void remove_real(Node* node, T val) {
+    Node* maximum_in_tree(Node* node) {
+        if (node == nullptr) {
+            return nullptr;
+        }
+
+        while (node->right != nullptr) {
+            node = node->right;
+        }
+
+        return node;
+    }
+
+    Node* sibling(Node* node) {
+        if (node->parent->left == node) {
+            return node->parent->right;
+        } else {
+            return node->parent->left;
+        }
+    }
+
+    void remove_real(Node* start_node, T val) {
+        Node* node = real_search(start_node, val);
         if (node == nullptr) {
             return;
         }
 
-        // Found the value we were looking for.
-        if (node->value == val) {
-            // Case 1 No children, just remove the node.
-            if (node->left == nullptr && node->right == nullptr) {
-                if (node->parent) {
-                    // Clean up the parent's child pointer.
-                    if (node->parent->left == node) {
-                        node->parent->left = nullptr;
-                    } else {
-                        node->parent->right = nullptr;
-                    }
-                    delete node;
-                } else {
-                    // This is the root node we are deleting.
-                    delete this->root;
-                    this->root = nullptr;
-                }
+        if (node->left != nullptr && node->right != nullptr) {
+            // Copy pred value into current node, then delete the predecessor.
+            Node* pred = maximum_in_tree(node->left);
+            node->value = pred->value;
+            node = pred;
+        }
+
+        if (node->left == nullptr || node->right == nullptr) {
+            Node* child = node->right == nullptr ? node->left : node->right;
+            if (node_color(node) == Color::BLACK) {
+                node->color = node_color(child);
+                delete_case1(node);
             }
-            // Case 2 Only one child, remove the node, and replace it with the child.
-            else if (node->left == nullptr || node->right == nullptr) {
-                Node* child = node->left;
-                if (node->right) {
-                    child = node->right;
-                }
-                if (node->parent) {
-                    // Clean up the parent's child pointer.
-                    if (node->parent->left == node) {
-                        node->parent->left = child;
-                    } else {
-                        node->parent->right = child;
-                    }
-                    delete node;
-                } else {
-                    // This is the root node we are deleting, just replace the child
-                    this->root = child;
-                    delete node;
-                }
-            }
-            // Case 3 both children are present, choose successor, and replace current node with successor, then remove current node.
-            else if (node->left != nullptr && node->right != nullptr) {
-                Node* successor = node->right;
-                while (successor->left) {
-                    successor = successor->left;
-                }
-                T temp = node->value;
-                node->value = successor->value;
-                successor->value = temp;
-                remove_real(node->right, temp);
+            replace_node(node, child);
+            if (node->parent == nullptr && child != nullptr) {
+                // Root should be black.
+                child->color = Color::BLACK;
             }
         } else {
-            // Didn't find the value yet, recurse into subtrees to find the value.
-            remove_real(node->left, val);
-            remove_real(node->right, val);
+            // This is fishy, is this needed? It feels like it.
+            replace_node(node, nullptr);
+        }
+
+        delete node;
+    }
+
+    void delete_case1(Node* node) {
+        if (node->parent == nullptr) {
+            return;
+        }
+        else {
+            delete_case2(node);
+        }
+    }
+
+    void delete_case2(Node* node) {
+        Node* s = sibling(node);
+        if (node_color(s) == Color::RED) {
+            node->parent->color = Color::RED;
+            s->color = Color::BLACK;
+            if (node == node->parent->left) {
+                rotate_left(node->parent);
+            } else {
+                rotate_right(node->parent);
+            }
+        }
+        delete_case3(node);
+    }
+
+    void delete_case3(Node* node) {
+        Node* s = sibling(node);
+        if (
+                node_color(node->parent) == Color::BLACK &&
+                node_color(s) == Color::BLACK &&
+                node_color(s->left) == Color::BLACK &&
+                node_color(s->right) == Color::BLACK
+           ) {
+            s->color = Color::RED;
+            delete_case1(node->parent);
+        }
+        else {
+            delete_case4(node);
+        }
+    }
+
+    void delete_case4(Node* node) {
+        Node* s = sibling(node);
+        if (
+                node_color(node->parent) == Color::RED &&
+                node_color(s) == Color::BLACK &&
+                node_color(s->left) == Color::BLACK &&
+                node_color(s->right) == Color::BLACK
+           ) {
+            s->color = Color::RED;
+            node->parent->color = Color::BLACK;
+        }
+        else {
+            delete_case5(node);
+        }
+    }
+
+    void delete_case5(Node* node) {
+        Node* s = sibling(node);
+        if (node_color(s) == Color::BLACK) {
+            if (
+                    node == node->parent->left &&
+                    node_color(s->right) == Color::BLACK &&
+                    node_color(s->left) == Color::RED
+               ) {
+                s->color = Color::RED;
+                s->left->color = Color::BLACK;
+                rotate_right(s);
+            } else if (
+                   node == node->parent->right &&
+                   node_color(s->left) == Color::BLACK &&
+                   node_color(s->right) == Color::RED
+              ) {
+               s->color = Color::RED;
+               s->right->color = Color::BLACK;
+               rotate_left(s);
+           }
+        }
+        delete_case6(node);
+    }
+
+    void delete_case6(Node* node) {
+        Node* s = sibling(node);
+        s->color = node->parent->color;
+        node->parent->color = Color::BLACK;
+        if (node == node->parent->left) {
+            s->right->color = Color::BLACK;
+            rotate_left(node->parent);
+        } else {
+            s->left->color = Color::BLACK;
+            rotate_right(node->parent);
         }
     }
 
