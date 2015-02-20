@@ -19,14 +19,20 @@ void testRBTree() {
     tree.print(RBTree<int>::Order::POST);
 
 
-    RBTree<int> tree2(tree);
+//    RBTree<int> tree2(tree);
 
-    tree2.remove(2);
+//    tree2.remove(2);
 
-    std::cout << "In Tree2: \n";
-    tree2.print(RBTree<int>::Order::IN);
-    std::cout << "In Tree1: \n";
-    tree.print(RBTree<int>::Order::IN);
+//    std::cout << "In Tree2: \n";
+//    tree2.print(RBTree<int>::Order::IN);
+//    std::cout << "In Tree1: \n";
+//    tree.print(RBTree<int>::Order::IN);
+
+//    typedef RBTree<int>::Node* IntNode;
+//    IntNode e = tree.search(1);
+//    IntNode p = e->parent;
+//    IntNode g = tree2.grand_parent(e);
+//    std::cout << "Number: " << e->value << " Parent: " << p->value << " Grandparent: " << g->value << "\n";
 }
 
 

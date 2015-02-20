@@ -16,11 +16,18 @@ public:
         Node* right;
         Node* parent;
         Color color;
-        Node(T val) : value(val), left(nullptr), right(nullptr), parent(nullptr), color(Color::BLACK) {}
+        Node(T val) : value(val), left(nullptr), right(nullptr), parent(nullptr), color(Color::RED) {}
         Node(T val, Color c) : value(val), left(nullptr), right(nullptr), parent(nullptr), color(c) {}
-        Node(T val, Node* p) : value(val), left(nullptr), right(nullptr), parent(p), color(Color::BLACK) {}
+        Node(T val, Node* p) : value(val), left(nullptr), right(nullptr), parent(p), color(Color::RED) {}
         Node(T val, Node* p, Color c) : value(val), left(nullptr), right(nullptr), parent(p), color(c) {}
-        Node(T val, Node* l, Node* r, Node* p, Color c) : value(val), left(l), right(r), parent(p), color(c) {}
+        Node(T val, Node* l, Node* r, Node* p, Color c) : value(val), left(l), right(r), parent(p), color(c) {
+            if (left != nullptr) {
+                left->parent = this;
+            }
+            if (right != nullptr) {
+                right->parent = this;
+            }
+        }
     } Node;
 
     Node* root;
@@ -65,19 +72,132 @@ public:
         empty(this->root);
     }
 
-    void insert(T val) {
-        real_insert(root, val, nullptr);
+    Node* grand_parent(Node* node) {
+        if (node == nullptr || node->parent == nullptr) {
+            return nullptr;
+        }
+        return node->parent->parent;
     }
 
-    void real_insert(Node*& node, T val, Node* parent) {
+    Node* uncle(Node* node) {
+        Node* g = grand_parent(node);
+        if (g == nullptr) {
+            return NULL;
+        } else if (g->left == node->parent) {
+            return g->right;
+        } else {
+            return g->left;
+        }
+    }
+
+    void insert(T val) {
+        real_insert(root, nullptr, val);
+    }
+
+    void real_insert(Node*& node, Node* parent, T val) {
         if (node == nullptr) {
             node = new Node(val, parent);
+            // Rebalance tree.
+            insert_case1(node);
         }
         else if (val < node->value) {
-            real_insert(node->left, val, node);
+            real_insert(node->left, node, val);
         }
         else {
-            real_insert(node->right, val, node);
+            real_insert(node->right, node, val);
+        }
+    }
+
+    Color node_color(Node* n) {
+        return n == nullptr ? Color::BLACK : n->color;
+    }
+
+    void insert_case1(Node* n) {
+        if (n->parent == nullptr) {
+            n->color = Color::BLACK;
+        } else {
+            insert_case2(n);
+        }
+    }
+
+    void insert_case2(Node* n) {
+        if (node_color(n->parent) == Color::BLACK) {
+            return;
+        } else {
+            insert_case3(n);
+        }
+    }
+
+    void insert_case3(Node* n) {
+        Node* u = uncle(n);
+        if (u != nullptr && node_color(u) == Color::RED) {
+            n->parent->color = Color::BLACK;
+            u->color = Color::BLACK;
+            Node* g = grand_parent(n);
+            g->color = Color::RED;
+            insert_case1(g);
+        } else {
+            insert_case4(n);
+        }
+    }
+
+    void replace_node(Node* from, Node* to) {
+        if (from->parent == nullptr) {
+            root = to;
+        } else {
+            if (from->parent->left == from) {
+                from->parent->left = to;
+            } else {
+                from->parent->right = to;
+            }
+        }
+        if (to != nullptr) {
+            to->parent = from->parent;
+        }
+    }
+
+    void rotate_left(Node* n) {
+        Node* r = n->right;
+        replace_node(n, r);
+        n->right = r->left;
+        if (r->left != nullptr) {
+            r->left->parent = n;
+        }
+        r->left = n;
+        n->parent = r;
+    }
+
+    void rotate_right(Node* n) {
+        Node* l = n->left;
+        replace_node(n, l);
+        n->left = l->right;
+        if (l->right != nullptr) {
+            l->right->parent = n;
+        }
+        l->right = n;
+        n->parent = l;
+    }
+
+    void insert_case4(Node* n) {
+        Node* g = grand_parent(n);
+        if (n == n->parent->right && n->parent == g->left) {
+            rotate_left(n->parent);
+            n = n->left;
+        } else if (n == n->parent->left && n->parent == g->right) {
+            rotate_right(n->parent);
+            n = n->right;
+        }
+        insert_case5(n);
+    }
+
+    void insert_case5(Node* n) {
+        Node* g = grand_parent(n);
+        n->parent->color = Color::BLACK;
+        g->color = Color::RED;
+        if (n == n->parent->left) {
+            rotate_right(g);
+        } else {
+            rotate_left(g);
         }
     }
 
@@ -166,13 +286,13 @@ public:
     }
 
     template <typename Func>
-    auto traverse(Node* node, Func f, Order order = Order::PRE) -> decltype(f(node->value)) {
+    auto traverse(Node* node, Func f, Order order = Order::PRE) -> decltype(f(node)) {
         if (node == nullptr) {
             return;
         }
 
         if (order == Order::PRE) {
-            f(node->value);
+            f(node);
         }
 
         if (node->left) {
@@ -180,7 +300,7 @@ public:
         }
 
         if (order == Order::IN) {
-            f(node->value);
+            f(node);
         }
 
         if (node->right) {
@@ -188,13 +308,27 @@ public:
         }
 
         if (order == Order::POST) {
-            f(node->value);
+            f(node);
         }
     }
 
+    template <typename Enumeration>
+    auto as_integer(Enumeration const value)
+        -> typename std::underlying_type<Enumeration>::type
+    {
+        return static_cast<typename std::underlying_type<Enumeration>::type>(value);
+    }
+
     void print(Order order = Order::PRE) {
-        return traverse(root, [](T value) {
-            std::cout << value << "\n";
+        return traverse(root, [](Node* node) {
+            int color = static_cast<typename std::underlying_type<Color>::type>(node->color);
+            char color_name = ' ';
+            if (color == 0) {
+                color_name = 'R';
+            } else {
+                color_name = 'B';
+            }
+            std::cout << node->value << ":" << color_name << "\n";
         }, order);
     }
 
